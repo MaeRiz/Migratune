@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migratune</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #2a2a38;
+    --accent: #ff3c5f;
+    --accent2: #ff8c42;
+    --green: #00e5a0;
+    --yellow: #ffd166;
+    --text: #f0f0f5;
+    --muted: #6b6b80;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 52px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 0 30px rgba(255,60,95,0.4);
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Steps ── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .step.active { border-color: rgba(255,60,95,0.5); }
+  .step.done { border-color: rgba(0,229,160,0.4); }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .step.done .step-num { background: var(--green); border-color: var(--green); color: #000; }
+  .step.active .step-num { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 16px rgba(255,60,95,0.5); }
+
+  .step-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .step-badge {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .step.done .step-badge { background: rgba(0,229,160,0.1); color: var(--green); border-color: var(--green); }
+  .step.active .step-badge { background: rgba(255,60,95,0.1); color: var(--accent); border-color: var(--accent); }
+
+  .step-body {
+    padding: 0 24px 24px;
+    display: none;
+  }
+  .step.open .step-body { display: block; }
+
+  /* ── Drop zone ── */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(255,60,95,0.04);
+  }
+  .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .drop-label { font-size: 0.85rem; color: var(--muted); }
+  .drop-label strong { color: var(--text); }
+
+  /* ── Preview table ── */
+  .preview {
+    margin-top: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: none;
+  }
+  .preview-header {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .preview-header span { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); }
+  .preview-header strong { font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 10px 16px; text-align: left; font-size: 0.78rem; }
+  th { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border); }
+  tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+  td:first-child { font-weight: 600; }
+  td:last-child { color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; }
+
+  /* ── Auth zone ── */
+  .auth-info {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .auth-info b { color: var(--yellow); }
+  .auth-info ol { margin: 8px 0 0 16px; }
+  .auth-info li { margin-bottom: 2px; }
+
+  .headers-textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 14px;
+    min-height: 110px;
+  }
+  .headers-textarea:focus { border-color: var(--accent); }
+  .headers-textarea::placeholder { color: var(--muted); }
+
+  /* ── Playlist name ── */
+  .field {
+    margin-bottom: 16px;
+  }
+  .field label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .field input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: var(--font-head);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--accent); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.01em;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(255,60,95,0.35);
+  }
+  .btn-primary:hover { background: #ff5470; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(255,60,95,0.5); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--muted); }
+
+  .btn-danger {
+    background: rgba(255,60,95,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(255,60,95,0.3);
+  }
+  .btn-danger:hover { background: rgba(255,60,95,0.2); }
+
+  /* ── Progress ── */
+  .progress-wrap {
+    margin-top: 16px;
+    display: none;
+  }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .progress-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 999px;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 12px rgba(255,60,95,0.5);
+  }
+
+  /* ── Results feed ── */
+  .feed {
+    margin-top: 16px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: none;
+  }
+  .feed-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.3s ease;
+  }
+  .feed-item:last-child { border-bottom: none; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  .feed-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-found { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot-not_found, .dot-no_id { background: var(--yellow); }
+  .dot-error { background: var(--accent); }
+  .dot-searching { background: var(--muted); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .feed-text { flex: 1; min-width: 0; }
+  .feed-title { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .feed-sub { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .feed-status { font-family: var(--font-mono); font-size: 0.65rem; flex-shrink: 0; }
+  .s-found { color: var(--green); }
+  .s-not_found, .s-no_id { color: var(--yellow); }
+  .s-error { color: var(--accent); }
+
+  /* ── Done banner ── */
+  .done-banner {
+    background: rgba(0,229,160,0.08);
+    border: 1px solid rgba(0,229,160,0.3);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin-top: 20px;
+    display: none;
+  }
+  .done-banner h3 { font-size: 1.3rem; color: var(--green); margin-bottom: 8px; }
+  .done-banner p { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; }
+  .done-banner a { color: var(--green); }
+
+  /* ── Log ── */
+  .log-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    max-height: 120px;
+    overflow-y: auto;
+    line-height: 1.8;
+    margin-top: 12px;
+    display: none;
+  }
+
+  /* ── Install box ── */
+  .install-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .install-box p { margin-bottom: 6px; }
+  .install-box code {
+    background: rgba(255,60,95,0.12);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">🎵</div>
+    <div>
+      <h1>Migra<span>tune</span></h1>
+      <div class="subtitle">SPOTIFY CSV → YOUTUBE MUSIC PLAYLIST</div>
+    </div>
+  </header>
+
+  <div class="steps">
+
+    <!-- ── Étape 1 : CSV ── -->
+    <div class="step open active" id="step1">
+      <div class="step-header" onclick="toggleStep('step1')">
+        <div class="step-num">1</div>
+        <div class="step-title">Charger le fichier CSV</div>
+        <div class="step-badge" id="badge1">EN ATTENTE</div>
+      </div>
+      <div class="step-body">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="csvFile" accept=".csv" onchange="handleFile(this.files[0])">
+          <div class="drop-icon">📂</div>
+          <div class="drop-label"><strong>Clique ou glisse</strong> ton fichier CSV Spotify ici</div>
+        </div>
+        <div class="preview" id="preview">
+          <div class="preview-header">
+            <strong id="previewTitle">Aperçu</strong>
+            <span id="previewCount"></span>
+          </div>
+          <table>
+            <thead><tr><th>Titre</th><th>Artiste</th><th>Album</th></tr></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Étape 2 : Auth ── -->
+    <div class="step" id="step2">
+      <div class="step-header" onclick="toggleStep('step2')">
+        <div class="step-num">2</div>
+        <div class="step-title">Connecter YouTube Music</div>
+        <div class="step-badge" id="badge2">EN ATTENTE</div>
+      </div>
+      <div class="step-body">
+        <div class="auth-info" id="authInstructions">
+          <b>Comment obtenir tes headers ?</b>
+          <ol>
+            <li>Ouvre <b>music.youtube.com</b> et connecte-toi</li>
+            <li>Appuie sur <b>F12</b> → onglet <b>Réseau / Network</b></li>
+            <li>Dans la barre de filtre, tape <b>browse</b> ou <b>search</b></li>
+            <li>Fais une recherche sur YouTube Music pour déclencher une requête API</li>
+            <li>Clique sur la requête <b>/youtubei/v1/search</b> ou <b>/youtubei/v1/browse</b></li>
+            <li>Dans le panneau de droite → <b>En-têtes de requête</b> → vérifie qu'il y a un header <b>authorization: SAPISIDHASH …</b></li>
+            <li>Copie tous les en-têtes de requête et colle-les ci-dessous</li>
+          </ol>
+          <br><b>Déjà connecté ?</b> Si <b>browser.json</b> existe déjà, laisse le champ vide.
+        </div>
+        <textarea class="headers-textarea" id="headersRaw"
+          placeholder="Colle ici tes headers de requête copiés depuis les DevTools…"></textarea>
+        <button class="btn btn-primary" id="btnAuth" onclick="doAuth()">
+          🔐 Connecter mon compte Google
+        </button>
+        <div class="log-box" id="authLog"></div>
+      </div>
+    </div>
+
+    <!-- ── Étape 3 : Import ── -->
+    <div class="step" id="step3">
+      <div class="step-header" onclick="toggleStep('step3')">
+        <div class="step-num">3</div>
+        <div class="step-title">Lancer l'import</div>
+        <div class="step-badge" id="badge3">EN ATTENTE</div>
+      </div>
+      <div class="step-body">
+        <div class="field">
+          <label>Nom de la playlist YouTube Music</label>
+          <input type="text" id="playlistName" value="Ma playlist Spotify" placeholder="Ma playlist Spotify">
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btnStart" onclick="startImport()" disabled>
+            ▶ Démarrer l'import
+          </button>
+          <button class="btn btn-danger" id="btnStop" onclick="stopImport()" style="display:none;">
+            ⏹ Arrêter
+          </button>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-meta">
+            <span id="progressLabel">0 / 0</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="feed" id="feed"></div>
+
+        <div class="done-banner" id="doneBanner">
+          <h3>🎉 Import terminé !</h3>
+          <p id="doneStats"></p>
+          <p id="doneLink" style="margin-top:8px;"></p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps -->
+
+  <!-- ── Comment installer ── -->
+  <div style="margin-top:40px; padding-top:24px; border-top:1px solid var(--border);">
+    <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">
+      Prérequis — à lancer une seule fois dans ton terminal
+    </div>
+    <div class="install-box">
+      <p>pip install <code>flask flask-cors ytmusicapi</code></p>
+      <p>python <code>server.py</code></p>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  const API = "";   // même origine
+  let polling = null;
+  let authenticated = false;
+  let csvLoaded = false;
+  let lastResultCount = 0;
+
+  // ── Drag & drop ─────────────────────────────────────────────────────────────
+  const dz = document.getElementById("dropZone");
+  dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("drag-over"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("drag-over"));
+  dz.addEventListener("drop", e => {
+    e.preventDefault();
+    dz.classList.remove("drag-over");
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+
+  async function handleFile(file) {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    const r = await fetch("/api/upload-csv", { method: "POST", body: fd });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+
+    // Badge + state
+    csvLoaded = true;
+    setStep("step1", "done", `${d.count} TITRES`);
+
+    // Aperçu
+    document.getElementById("previewTitle").textContent = file.name;
+    document.getElementById("previewCount").textContent = `${d.count} titres`;
+    const tbody = document.getElementById("previewBody");
+    tbody.innerHTML = d.preview.map(t =>
+      `<tr><td>${esc(t.title)}</td><td>${esc(t.artist)}</td><td>${esc(t.album)}</td></tr>`
+    ).join("") + (d.count > 5 ? `<tr><td colspan="3" style="color:var(--muted);font-family:var(--font-mono);font-size:0.7rem">… et ${d.count - 5} autres</td></tr>` : "");
+    document.getElementById("preview").style.display = "block";
+
+    openStep("step2");
+    checkReadyToImport();
+  }
+
+  // ── Auth ─────────────────────────────────────────────────────────────────────
+  async function doAuth() {
+    const headersRaw = document.getElementById("headersRaw").value.trim();
+    document.getElementById("btnAuth").disabled = true;
+    document.getElementById("authLog").style.display = "block";
+    appendLog("authLog", "🔐 Connexion en cours…");
+
+    const r = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ headers_raw: headersRaw })
+    });
+    const d = await r.json();
+
+    if (d.error) {
+      appendLog("authLog", "❌ " + d.error);
+      document.getElementById("btnAuth").disabled = false;
+      return;
+    }
+
+    appendLog("authLog", "✅ " + d.message);
+    authenticated = true;
+    setStep("step2", "done", "CONNECTÉ");
+    document.getElementById("btnStart").disabled = false;
+    openStep("step3");
+    checkReadyToImport();
+  }
+
+  // ── Import ────────────────────────────────────────────────────────────────────
+  async function startImport() {
+    const name = document.getElementById("playlistName").value.trim() || "Ma playlist Spotify";
+    const r = await fetch("/api/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlist_name: name })
+    });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+
+    document.getElementById("btnStart").disabled = true;
+    document.getElementById("btnStop").style.display = "inline-flex";
+    document.getElementById("progressWrap").style.display = "block";
+    document.getElementById("feed").style.display = "block";
+    document.getElementById("doneBanner").style.display = "none";
+    document.getElementById("feed").innerHTML = "";
+    lastResultCount = 0;
+    setStep("step3", "active", "EN COURS");
+
+    polling = setInterval(pollStatus, 800);
+  }
+
+  async function stopImport() {
+    await fetch("/api/stop", { method: "POST" });
+    clearInterval(polling);
+    document.getElementById("btnStop").style.display = "none";
+    document.getElementById("btnStart").disabled = false;
+    setStep("step3", "active", "STOPPÉ");
+  }
+
+  async function pollStatus() {
+    const s = await fetch("/api/status").then(r => r.json());
+    const { progress, total, results, status, playlist_id, playlist_name } = s;
+
+    // Progress bar
+    const pct = total > 0 ? Math.round(progress / total * 100) : 0;
+    document.getElementById("progressFill").style.width = pct + "%";
+    document.getElementById("progressLabel").textContent = `${progress} / ${total}`;
+    document.getElementById("progressPct").textContent = pct + "%";
+
+    // Feed — ajouter seulement les nouveaux
+    const feed = document.getElementById("feed");
+    const newItems = results.slice(lastResultCount);
+    lastResultCount = results.length;
+    newItems.forEach(r => {
+      const div = document.createElement("div");
+      div.className = "feed-item";
+      const statusLabel = { found:"✓ trouvé", not_found:"non trouvé", error:"erreur", no_id:"sans ID" }[r.status] || r.status;
+      const statusClass = `s-${r.status}`;
+      div.innerHTML = `
+        <div class="feed-dot dot-${r.status}"></div>
+        <div class="feed-text">
+          <div class="feed-title">${esc(r.title)}</div>
+          <div class="feed-sub">${esc(r.artist)}${r.yt_title ? " → " + esc(r.yt_title) : ""}</div>
+        </div>
+        <div class="feed-status ${statusClass}">${statusLabel}</div>
+      `;
+      feed.appendChild(div);
+      feed.scrollTop = feed.scrollHeight;
+    });
+
+    // Done
+    if (status === "done" || status === "error") {
+      clearInterval(polling);
+      document.getElementById("btnStop").style.display = "none";
+      document.getElementById("btnStart").disabled = false;
+
+      if (status === "done") {
+        setStep("step3", "done", "TERMINÉ");
+        const found = results.filter(r => r.status === "found").length;
+        const banner = document.getElementById("doneBanner");
+        banner.style.display = "block";
+        document.getElementById("doneStats").textContent = `${found} titres sur ${total} ajoutés à "${playlist_name}"`;
+        if (playlist_id) {
+          document.getElementById("doneLink").innerHTML =
+            `<a href="https://music.youtube.com/playlist?list=${playlist_id}" target="_blank">🔗 Ouvrir la playlist sur YouTube Music</a>`;
+        }
+      } else {
+        setStep("step3", "active", "ERREUR");
+      }
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  function toggleStep(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle("open");
+  }
+  function openStep(id) {
+    // close others, open this
+    document.querySelectorAll(".step").forEach(s => {
+      if (s.id !== id) s.classList.remove("open");
+    });
+    document.getElementById(id).classList.add("open");
+  }
+  function setStep(id, cls, badge) {
+    const el = document.getElementById(id);
+    el.classList.remove("active","done");
+    if (cls) el.classList.add(cls);
+    document.getElementById(id.replace("step","badge")).textContent = badge;
+  }
+  function appendLog(id, msg) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = "block";
+    if (!el.textContent.includes(msg)) {
+      el.innerHTML += (el.innerHTML ? "<br>" : "") + esc(msg);
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+  function esc(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function checkReadyToImport() {
+    if (csvLoaded && authenticated) {
+      document.getElementById("btnStart").disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

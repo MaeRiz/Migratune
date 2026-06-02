@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+
+# Credentials — ne jamais commiter
+browser.json
+oauth.json
